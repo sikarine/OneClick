@@ -33,6 +33,12 @@
     <div class="bs-example">
     <form class="form-horizontal" enctype="multipart/form-data" method="post" action="report.php">
         <div class="form-group">
+            <label for="inputEmail3" class="col-sm-2 control-label">Header</label>
+            <div class="col-sm-10">
+                <textarea name="header" class="form-control" rows="5"></textarea>
+            </div>
+        </div>
+        <div class="form-group">
             <label for="inputEmail3" class="col-sm-2 control-label">Plan</label>
             <div class="col-sm-10">
                 <input type="input" class="form-control" name="plan" value="">

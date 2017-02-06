@@ -17,7 +17,7 @@ $result = file_get_contents($_FILES['report']['tmp_name']);
 
 if((isset($_POST['plan'])) && ($_POST['plan'] > 0) && (isset($_POST['cost'])) && ($_POST['cost'] > 0))
 {
-    $margin = floatval($_POST['plan'])/floatval($_POST['cost']);
+    $margin = bcdiv(floatval(cleanData($_POST['plan'])),floatval(cleanData($_POST['cost'])),20);
 }
 else
 {
@@ -102,7 +102,39 @@ for($i=$column_row;$i>=0;$i--)
 
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<style type="text/css">
+.table-bordered > tbody > tr > td, .table-bordered > tbody > tr > th, .table-bordered > tfoot > tr > td, .table-bordered > tfoot > tr > th, .table-bordered > thead > tr > td, .table-bordered > thead > tr > th,.table-bordered  {
+    border-color: #000;
+}
+table th{
+    text-align: center;
+}
+table thead th:nth-child(1),
+table thead th:nth-child(2) {
+    background: #FF6600;
+    color:#FFF;
+}
+table thead th:nth-child(3),
+table thead th:nth-child(4),
+table thead th:nth-child(5),
+table thead th:nth-child(6) {
+    background: #FABF8F;
+    color:#000;
+}
+table tfoot th,
+table tfoot td{
+    background: #000;
+    color:#FFF;
+}
+</style>
+<img src="logo.png" class="img-responsive center-block" style="max-width:250px;">
+<?php if(!empty($_POST['header'])): ?>
+<p><strong>
+<?php echo nl2br($_POST['header']); ?>
+</strong></p>
+<?php endif; ?>
 <?php
+//$margin = 1;
 foreach($array as $row)
 {
     if(($row[$ads_index]<>"") && ($row[$ads_index]<>" --"))
@@ -134,14 +166,16 @@ ksort($data);
 ?>
 <h3>Ads</h3>
 <table class="table table-striped table-bordered">
-    <tr>
-        <th>Ads</th>
-        <th>Cost</th>
-        <th>Impressions</th>
-        <th>Clicks</th>
-        <th>Click-through Rate</th>
-        <th>CPC</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>Ads</th>
+            <th>Cost</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>Click-through Rate</th>
+            <th>CPC</th>
+        </tr>
+    </thead>
     <?php
         $total_cost = 0;
         $total_impression = 0;
@@ -149,7 +183,7 @@ ksort($data);
     ?>
     <?php foreach($data as $item): ?>
     <?php
-        $total_cost += round($item['Cost']*$margin,2);
+        $total_cost += $item['Cost']*$margin;
         $total_impression += $item['Impressions'];
         $total_click += $item['Clicks'];
     ?>
@@ -158,18 +192,20 @@ ksort($data);
         <td class="text-right"><?php echo number_format(round($item['Cost']*$margin,2),2); ?></td>
         <td class="text-right"><?php echo number_format($item['Impressions'],0); ?></td>
         <td class="text-right"><?php echo number_format($item['Clicks'],0); ?></td>
-        <td class="text-right"><?php echo round($item['Clicks']/$item['Impressions']*100,2); ?>%</td>
-        <td class="text-right"><?php echo round(round($item['Cost']*$margin,2)/$item['Clicks'],2); ?></td>
+        <td class="text-right"><?php echo ($item['Clicks']==0)?'-':number_format(round($item['Clicks']/$item['Impressions']*100,2),2).'%'; ?></td>
+        <td class="text-right"><?php echo ($item['Cost']==0)?'-':number_format(round(round($item['Cost']*$margin,2)/$item['Clicks'],2),2); ?></td>
     </tr>
     <?php endforeach; ?>
-    <tr>
-        <th>Total</th>
-        <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
-        <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
-        <td class="text-right"><?php echo number_format($total_click,0); ?></td>
-        <td class="text-right"><?php echo round($total_click/$total_impression*100,2); ?>%</td>
-        <td class="text-right"><?php echo round($total_cost/$total_click,2); ?></td>
-    </tr>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
+            <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
+            <td class="text-right"><?php echo number_format($total_click,0); ?></td>
+            <td class="text-right"><?php echo number_format(round($total_click/$total_impression*100,2),2).'%'; ?></td>
+            <td class="text-right"><?php echo number_format(round($total_cost/$total_click,2),2); ?></td>
+        </tr>
+    </tfoot>
 </table>
 <div id="ads" style="min-width: 310px; height: 400px; margin: 0 auto 100px"></div>
 <script>
@@ -208,13 +244,13 @@ $(function () {
             title: {
                 text: 'CPC',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             labels: {
                 format: '{value}',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             opposite: true
@@ -228,7 +264,7 @@ $(function () {
         series: [{
             name: 'Click-through Rate',
             type: 'column',
-            yAxis: 1,
+            yAxis: 0,
             data: [<?php echo implode(",", $chart['yAxis1']); ?>],
             dataLabels: {
                     enabled: true,
@@ -244,6 +280,8 @@ $(function () {
             name: 'CPC',
             type: 'scatter',
             data: [<?php echo implode(",", $chart['yAxis2']); ?>],
+            color: "#F00",
+            yAxis: 1,
             dataLabels: {
                     enabled: true,
             },
@@ -288,14 +326,16 @@ ksort($data);
 ?>
 <h3>Ad Group</h3>
 <table class="table table-striped table-bordered">
-    <tr>
-        <th>Ad Group</th>
-        <th>Cost</th>
-        <th>Impressions</th>
-        <th>Clicks</th>
-        <th>Click-through Rate</th>
-        <th>CPC</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>Ad Group</th>
+            <th>Cost</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>Click-through Rate</th>
+            <th>CPC</th>
+        </tr>
+    </thead>
     <?php
         $total_cost = 0;
         $total_impression = 0;
@@ -303,7 +343,7 @@ ksort($data);
     ?>
     <?php foreach($data as $item): ?>
     <?php
-        $total_cost += round($item['Cost']*$margin,2);
+        $total_cost += $item['Cost']*$margin;
         $total_impression += $item['Impressions'];
         $total_click += $item['Clicks'];
     ?>
@@ -312,18 +352,20 @@ ksort($data);
         <td class="text-right"><?php echo number_format(round($item['Cost']*$margin,2),2); ?></td>
         <td class="text-right"><?php echo number_format($item['Impressions'],0); ?></td>
         <td class="text-right"><?php echo number_format($item['Clicks'],0); ?></td>
-        <td class="text-right"><?php echo round($item['Clicks']/$item['Impressions']*100,2); ?>%</td>
-        <td class="text-right"><?php echo round(round($item['Cost']*$margin,2)/$item['Clicks'],2); ?></td>
+        <td class="text-right"><?php echo ($item['Clicks']==0)?'-':number_format(round($item['Clicks']/$item['Impressions']*100,2),2).'%'; ?></td>
+        <td class="text-right"><?php echo ($item['Cost']==0)?'-':number_format(round(round($item['Cost']*$margin,2)/$item['Clicks'],2),2); ?></td>
     </tr>
     <?php endforeach; ?>
-    <tr>
-        <th>Total</th>
-        <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
-        <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
-        <td class="text-right"><?php echo number_format($total_click,0); ?></td>
-        <td class="text-right"><?php echo round($total_click/$total_impression*100,2); ?>%</td>
-        <td class="text-right"><?php echo round($total_cost/$total_click,2); ?></td>
-    </tr>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
+            <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
+            <td class="text-right"><?php echo number_format($total_click,0); ?></td>
+            <td class="text-right"><?php echo number_format(round($total_click/$total_impression*100,2),2); ?>%</td>
+            <td class="text-right"><?php echo number_format(round($total_cost/$total_click,2),2); ?></td>
+        </tr>
+    </tfoot>
 </table>
 <div id="ad-group" style="min-width: 310px; height: 400px; margin: 0 auto 100px"></div>
 <script>
@@ -362,13 +404,13 @@ $(function () {
             title: {
                 text: 'CPC',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             labels: {
                 format: '{value}',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             opposite: true
@@ -382,7 +424,7 @@ $(function () {
         series: [{
             name: 'Click-through Rate',
             type: 'column',
-            yAxis: 1,
+            yAxis: 0,
             data: [<?php echo implode(",", $chart['yAxis1']); ?>],
             dataLabels: {
                     enabled: true,
@@ -397,14 +439,16 @@ $(function () {
         }, {
             name: 'CPC',
             type: 'scatter',
+            yAxis: 1,
             data: [<?php echo implode(",", $chart['yAxis2']); ?>],
+            color: "#F00",
             dataLabels: {
                     enabled: true,
             },
             tooltip: {
                 headerFormat: '<b>{point.key}</b><br>',
                 pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y}</b>'
-            }
+            },
         }]
     });
 });
@@ -444,14 +488,16 @@ ksort($data);
 
 <h3>Placement</h3>
 <table class="table table-striped table-bordered">
-    <tr>
-        <th>Placement</th>
-        <th>Cost</th>
-        <th>Impressions</th>
-        <th>Clicks</th>
-        <th>Click-through Rate</th>
-        <th>CPC</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>Placement</th>
+            <th>Cost</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>Click-through Rate</th>
+            <th>CPC</th>
+        </tr>
+    </thead>
     <?php
         $total_cost = 0;
         $total_impression = 0;
@@ -459,7 +505,7 @@ ksort($data);
     ?>
     <?php foreach($data as $item): ?>
     <?php
-        $total_cost += round($item['Cost']*$margin,2);
+        $total_cost += $item['Cost']*$margin;
         $total_impression += $item['Impressions'];
         $total_click += $item['Clicks'];
     ?>
@@ -468,18 +514,20 @@ ksort($data);
         <td class="text-right"><?php echo number_format(round($item['Cost']*$margin,2),2); ?></td>
         <td class="text-right"><?php echo number_format($item['Impressions'],0); ?></td>
         <td class="text-right"><?php echo number_format($item['Clicks'],0); ?></td>
-        <td class="text-right"><?php echo round($item['Clicks']/$item['Impressions']*100,2); ?>%</td>
-        <td class="text-right"><?php echo round(round($item['Cost']*$margin,2)/$item['Clicks'],2); ?></td>
+        <td class="text-right"><?php echo ($item['Clicks']==0)?'-':number_format(round($item['Clicks']/$item['Impressions']*100,2),2).'%'; ?></td>
+        <td class="text-right"><?php echo ($item['Cost']==0)?'-':number_format(round(round($item['Cost']*$margin,2)/$item['Clicks'],2),2); ?></td>
     </tr>
     <?php endforeach; ?>
-    <tr>
-        <th>Total</th>
-        <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
-        <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
-        <td class="text-right"><?php echo number_format($total_click,0); ?></td>
-        <td class="text-right"><?php echo round($total_click/$total_impression*100,2); ?>%</td>
-        <td class="text-right"><?php echo round($total_cost/$total_click,2); ?></td>
-    </tr>
+    <tfoot>
+        <tr>
+            <th>Total</th>
+            <td class="text-right"><?php echo number_format(round($total_cost,2),2); ?></td>
+            <td class="text-right"><?php echo number_format($total_impression,0); ?></td>
+            <td class="text-right"><?php echo number_format($total_click,0); ?></td>
+            <td class="text-right"><?php echo number_format(round($total_click/$total_impression*100,2),2); ?>%</td>
+            <td class="text-right"><?php echo number_format(round($total_cost/$total_click,2),2); ?></td>
+        </tr>
+    </tfoot>
 </table>
 <div id="device" style="min-width: 310px; height: 400px; margin: 0 auto 100px"></div>
 <script>
@@ -518,13 +566,13 @@ $(function () {
             title: {
                 text: 'CPC',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             labels: {
                 format: '{value}',
                 style: {
-                    color: Highcharts.getOptions().colors[0]
+                    color: "black"
                 }
             },
             opposite: true
@@ -538,7 +586,7 @@ $(function () {
         series: [{
             name: 'Click-through Rate',
             type: 'column',
-            yAxis: 1,
+            yAxis: 0,
             data: [<?php echo implode(",", $chart['yAxis1']); ?>],
             dataLabels: {
                     enabled: true,
@@ -553,7 +601,9 @@ $(function () {
         }, {
             name: 'CPC',
             type: 'scatter',
+            yAxis: 1,
             data: [<?php echo implode(",", $chart['yAxis2']); ?>],
+            color: "#F00",
             dataLabels: {
                     enabled: true,
             },
